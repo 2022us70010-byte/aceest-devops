@@ -44,18 +44,21 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh '''
-                    /opt/sonar-scanner/bin/sonar-scanner \
-                    -Dsonar.projectKey=aceest-fitness \
-                    -Dsonar.sources=. \
-                    -Dsonar.host.url=$SONAR_HOST_URL \
-                    -Dsonar.login=$SONAR_TOKEN
-                    '''
-                }
-            }
+    steps {
+        withSonarQubeEnv('SonarQube') {
+            sh '''
+            docker run --rm \
+              -v $PWD:/usr/src \
+              sonarsource/sonar-scanner-cli \
+              -Dsonar.projectKey=aceest-fitness \
+              -Dsonar.sources=/usr/src \
+              -Dsonar.host.url=$SONAR_HOST_URL \
+              -Dsonar.login=$SONAR_TOKEN
+            '''
         }
+    }
+}
+
 
         stage('Quality Gate') {
             steps {
