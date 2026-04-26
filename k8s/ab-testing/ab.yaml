@@ -1,0 +1,64 @@
+# Version A (control group)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aceest-version-a
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: aceest-a
+  template:
+    metadata:
+      labels:
+        app: aceest-a
+    spec:
+      containers:
+      - name: aceest
+        image: krishnakumar2022us70010/aceest-fitness:v1.0
+        ports:
+        - containerPort: 5000
+---
+# Version B (experiment group)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aceest-version-b
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: aceest-b
+  template:
+    metadata:
+      labels:
+        app: aceest-b
+    spec:
+      containers:
+      - name: aceest
+        image: krishnakumar2022us70010/aceest-fitness:v2.0
+        ports:
+        - containerPort: 5000
+---
+# Ingress routes header 'X-Group: beta' to version B
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: aceest-ab-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-by-header: "X-Group"
+    nginx.ingress.kubernetes.io/canary-by-header-value: "beta"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: aceest.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: aceest-b-svc
+            port:
+              number: 80
