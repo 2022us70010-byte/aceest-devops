@@ -1,10 +1,5 @@
 pipeline {
-    agent {
-        docker {
-            image 'python:3.10'
-            args '-u root'
-        }
-    }
+    agent any
 
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
@@ -47,25 +42,33 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
-    steps {
-        withSonarQubeEnv('SonarQube') {
-            sh '''
-            docker run --rm \
-              -e SONAR_HOST_URL=$SONAR_HOST_URL \
-              -e SONAR_LOGIN=$SONAR_TOKEN \
-              -v "$PWD:/usr/src" \
-              sonarsource/sonar-scanner-cli
-            '''
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh """
+                    /opt/sonar-scanner/bin/sonar-scanner \
+                    -Dsonar.projectKey=aceest-fitness \
+                    -Dsonar.sources=. \
+                    -Dsonar.host.url=${SONAR_HOST_URL} \
+                    -Dsonar.login=${SONAR_TOKEN}
+                    """
+                }
+            }
         }
-    }
-}
-
 
         stage('Quality Gate') {
             steps {
                 timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
+            }
+        }
+
+        stage('Check Docker') {
+            steps {
+                sh '''
+                docker version
+                docker info
+                '''
             }
         }
 
@@ -82,7 +85,6 @@ pipeline {
                 """
             }
         }
-
     }
 
     post {
