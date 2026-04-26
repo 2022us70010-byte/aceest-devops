@@ -71,7 +71,7 @@ jobs:
       - name: Build Docker and run tests inside container
         run: |
           docker build -t aceest-fitness-test .
-          docker run --rm aceest-fitness-test pytest test_app.py -v
+          docker run --rm aceest-fitness-test python -m pytest test_app.py -v
 
   docker-push:
     name: Push to Docker Hub
