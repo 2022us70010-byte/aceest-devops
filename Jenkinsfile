@@ -15,26 +15,32 @@ pipeline {
             }
         }
 
-       stage('Install Dependencies') {
-    steps {
-        sh '''
-        python3 -m ensurepip --upgrade || true
-        python3 -m pip install --upgrade pip || {
-            curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-            python3 get-pip.py
+        stage('Create Virtual Environment') {
+            steps {
+                sh '''
+                python3 -m venv venv
+                '''
+            }
         }
 
-        python3 -m pip install -r requirements.txt
-        python3 -m pip install pytest pytest-cov
-        '''
-    }
-}
+        stage('Install Dependencies') {
+            steps {
+                sh '''
+                . venv/bin/activate
 
+                pip install --upgrade pip
+                pip install -r requirements.txt
+                pip install pytest pytest-cov
+                '''
+            }
+        }
 
         stage('Unit Tests') {
             steps {
                 sh '''
-                python3 -m pytest --junitxml=test-results.xml --cov=. --cov-report=xml
+                . venv/bin/activate
+
+                python -m pytest --junitxml=test-results.xml --cov=. --cov-report=xml
                 '''
             }
             post {
@@ -52,7 +58,8 @@ pipeline {
                       -Dsonar.projectKey=aceest-fitness \
                       -Dsonar.sources=. \
                       -Dsonar.host.url=$SONAR_HOST_URL \
-                      -Dsonar.login=$SONAR_TOKEN
+                      -Dsonar.login=$SONAR_TOKEN \
+                      -Dsonar.python.coverage.reportPaths=coverage.xml
                     '''
                 }
             }
