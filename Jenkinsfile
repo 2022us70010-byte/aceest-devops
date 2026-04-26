@@ -18,9 +18,9 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 sh '''
-                python -m pip install --upgrade pip
-                pip install -r requirements.txt
-                pip install pytest pytest-cov
+                python3 -m pip install --upgrade pip
+                python3 -m pip install -r requirements.txt
+                python3 -m pip install pytest pytest-cov
                 '''
             }
         }
@@ -28,7 +28,7 @@ pipeline {
         stage('Unit Tests') {
             steps {
                 sh '''
-                python -m pytest --junitxml=test-results.xml --cov=. --cov-report=xml
+                python3 -m pytest --junitxml=test-results.xml --cov=. --cov-report=xml
                 '''
             }
             post {
@@ -39,20 +39,18 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
-    steps {
-        withSonarQubeEnv('SonarQube') {
-            sh '''
-            /opt/sonar-scanner/bin/sonar-scanner \
-              -Dsonar.projectKey=aceest-fitness \
-              -Dsonar.sources=. \
-              -Dsonar.host.url=$SONAR_HOST_URL \
-              -Dsonar.login=$SONAR_TOKEN
-            '''
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh '''
+                    sonar-scanner \
+                      -Dsonar.projectKey=aceest-fitness \
+                      -Dsonar.sources=. \
+                      -Dsonar.host.url=$SONAR_HOST_URL \
+                      -Dsonar.login=$SONAR_TOKEN
+                    '''
+                }
+            }
         }
-    }
-}
-
-
 
         stage('Quality Gate') {
             steps {
@@ -65,7 +63,7 @@ pipeline {
         stage('Check Docker') {
             steps {
                 sh '''
-                docker version || true
+                docker version || echo "Docker not available"
                 '''
             }
         }
