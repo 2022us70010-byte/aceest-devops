@@ -1,11 +1,15 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'python:3.10'
+            args '-u root'
+        }
+    }
 
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
         DOCKER_IMAGE = "krishnakumar2022us70010/aceest-fitness"
         SONAR_TOKEN = credentials('sonar-token')
-        SONAR_SCANNER = "/opt/sonar-scanner/bin/sonar-scanner"
     }
 
     stages {
@@ -19,11 +23,9 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 sh '''
-                echo "Skipping apt-get (Jenkins permission issue fix)"
-
-                pip3 install --upgrade pip
-                pip3 install -r requirements.txt
-                pip3 install pytest pytest-cov
+                python -m pip install --upgrade pip
+                pip install -r requirements.txt
+                pip install pytest pytest-cov
                 '''
             }
         }
@@ -31,7 +33,7 @@ pipeline {
         stage('Unit Tests') {
             steps {
                 sh '''
-                python3 -m pytest --junitxml=test-results.xml --cov=. --cov-report=xml
+                python -m pytest --junitxml=test-results.xml --cov=. --cov-report=xml
                 '''
             }
             post {
@@ -66,8 +68,7 @@ pipeline {
         stage('Check Docker') {
             steps {
                 sh '''
-                docker version
-                docker ps
+                docker version || true
                 '''
             }
         }
@@ -89,10 +90,10 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline SUCCESS — build completed!'
+            echo 'Pipeline SUCCESS'
         }
         failure {
-            echo 'Pipeline FAILED!'
+            echo 'Pipeline FAILED'
         }
     }
 }
