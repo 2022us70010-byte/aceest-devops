@@ -1,20 +1,15 @@
-# Use official lightweight Python image
-FROM python:3.11-slim
-
-# Set working directory inside container
+# Stage 1: Build
+FROM python:3.11-slim AS builder
 WORKDIR /app
-
-# Copy requirements first (leverages Docker layer caching)
 COPY requirements.txt .
-
-# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application code
+# Stage 2: Runtime
+FROM python:3.11-slim
+WORKDIR /app
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY . .
-
-# Expose Flask port
+RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app
+USER appuser
 EXPOSE 5000
-
-# Run the Flask application
 CMD ["python", "app.py"]
