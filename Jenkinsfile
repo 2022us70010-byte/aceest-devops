@@ -2,7 +2,9 @@ pipeline {
     agent any
 
     environment {
-        VENV = "venv"
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
+        DOCKER_IMAGE = "krishnakumar2022us70010/aceest-fitness"
+        SONAR_TOKEN = credentials('sonar-token')
     }
 
     stages {
@@ -15,19 +17,17 @@ pipeline {
 
         stage('Create Virtual Environment') {
             steps {
-                sh '''
-                python3 -m venv venv
-                '''
+                sh 'python3 -m venv venv'
             }
         }
 
         stage('Install Dependencies') {
             steps {
                 sh '''
-                . venv/bin/activate
-                pip install --upgrade pip
-                pip install -r requirements.txt
-                pip install pytest pytest-cov
+                    . venv/bin/activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                    pip install pytest pytest-cov
                 '''
             }
         }
@@ -35,17 +35,16 @@ pipeline {
         stage('Unit Tests') {
             steps {
                 sh '''
-                . venv/bin/activate
+                    mkdir -p reports
+                    . venv/bin/activate
 
-                # Create reports directory to avoid permission issues
-                mkdir -p reports
-
-                python -m pytest \
-                    --junitxml=reports/test-results.xml \
-                    --cov=. \
-                    --cov-report=xml:reports/coverage.xml
+                    python -m pytest \
+                        --junitxml=reports/test-results.xml \
+                        --cov=. \
+                        --cov-report=xml:reports/coverage.xml
                 '''
             }
+
             post {
                 always {
                     junit 'reports/test-results.xml'
@@ -55,49 +54,50 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                echo "SonarQube stage (kept for pipeline flow)"
-                // If you have sonar scanner installed, uncomment below:
-
-                /*
                 withSonarQubeEnv('SonarQube') {
                     sh '''
-                    . venv/bin/activate
-                    sonar-scanner
+                        sonar-scanner \
+                          -Dsonar.projectKey=aceest-fitness \
+                          -Dsonar.sources=. \
+                          -Dsonar.host.url=$SONAR_HOST_URL \
+                          -Dsonar.login=$SONAR_TOKEN \
+                          -Dsonar.python.coverage.reportPaths=reports/coverage.xml
                     '''
                 }
-                */
             }
         }
 
         stage('Quality Gate') {
             steps {
-                echo "Quality Gate stage (optional wait step)"
-                // If SonarQube is enabled, you can add:
-                // timeout(time: 2, unit: 'MINUTES') {
-                //     waitForQualityGate abortPipeline: true
-                // }
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
             }
         }
 
         stage('Check Docker') {
             steps {
-                sh 'docker --version'
+                sh 'docker version || echo "Docker not available"'
             }
         }
 
         stage('Docker Build & Push') {
             steps {
-                sh '''
-                echo "Building Docker Image..."
-                docker build -t myapp:latest .
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-credentials',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh '''
+                        docker build -t $DOCKER_IMAGE:$BUILD_NUMBER .
+                        docker tag $DOCKER_IMAGE:$BUILD_NUMBER $DOCKER_IMAGE:latest
 
-                echo "Logging into Docker Hub..."
-                echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
 
-                echo "Pushing Image..."
-                docker tag myapp:latest yourdockerhubusername/myapp:latest
-                docker push yourdockerhubusername/myapp:latest
-                '''
+                        docker push $DOCKER_IMAGE:$BUILD_NUMBER
+                        docker push $DOCKER_IMAGE:latest
+                    '''
+                }
             }
         }
     }
