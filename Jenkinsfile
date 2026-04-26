@@ -53,19 +53,22 @@ pipeline {
         }
 
         stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh '''
-                        sonar-scanner \
-                          -Dsonar.projectKey=aceest-fitness \
-                          -Dsonar.sources=. \
-                          -Dsonar.host.url=$SONAR_HOST_URL \
-                          -Dsonar.login=$SONAR_TOKEN \
-                          -Dsonar.python.coverage.reportPaths=reports/coverage.xml
-                    '''
-                }
+    steps {
+        withSonarQubeEnv('SonarQube') {
+            withEnv(["PATH+SONAR=${tool 'SonarScanner'}/bin"]) {
+                sh '''
+                sonar-scanner \
+                  -Dsonar.projectKey=aceest-fitness \
+                  -Dsonar.sources=. \
+                  -Dsonar.host.url=$SONAR_HOST_URL \
+                  -Dsonar.login=$SONAR_TOKEN \
+                  -Dsonar.python.coverage.reportPaths=reports/coverage.xml
+                '''
             }
         }
+    }
+}
+
 
         stage('Quality Gate') {
             steps {
