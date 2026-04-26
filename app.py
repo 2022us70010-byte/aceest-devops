@@ -30,6 +30,10 @@ clients = {}
 def home():
     return jsonify({"message": "Welcome to ACEest Fitness & Gym API", "status": "running"})
 
+@app.route('/health')
+def health():
+    return jsonify({"status": "healthy", "version": "1.0"}), 200
+
 @app.route('/programs', methods=['GET'])
 def get_programs():
     return jsonify(programs)
