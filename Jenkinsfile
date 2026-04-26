@@ -5,6 +5,7 @@ pipeline {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
         DOCKER_IMAGE = "krishnakumar2022us70010/aceest-fitness"
         SONAR_TOKEN = credentials('sonar-token')
+        SONAR_SCANNER = "/opt/sonar-scanner/bin/sonar-scanner"
     }
 
     stages {
@@ -18,8 +19,7 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 sh '''
-                apt-get update
-                apt-get install -y python3-pip
+                echo "Skipping apt-get (Jenkins permission issue fix)"
 
                 pip3 install --upgrade pip
                 pip3 install -r requirements.txt
@@ -44,13 +44,13 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
-                    sh """
+                    sh '''
                     /opt/sonar-scanner/bin/sonar-scanner \
                     -Dsonar.projectKey=aceest-fitness \
                     -Dsonar.sources=. \
-                    -Dsonar.host.url=${SONAR_HOST_URL} \
-                    -Dsonar.login=${SONAR_TOKEN}
-                    """
+                    -Dsonar.host.url=$SONAR_HOST_URL \
+                    -Dsonar.login=$SONAR_TOKEN
+                    '''
                 }
             }
         }
@@ -67,7 +67,7 @@ pipeline {
             steps {
                 sh '''
                 docker version
-                docker info
+                docker ps
                 '''
             }
         }
