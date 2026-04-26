@@ -1,5 +1,10 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'python:3.10'
+            args '-u root'
+        }
+    }
 
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
@@ -17,14 +22,22 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                sh 'python3 -m pip install -r requirements.txt'
-                sh 'python3 -m pip install pytest pytest-cov'
+                sh '''
+                apt-get update
+                apt-get install -y python3-pip
+
+                pip3 install --upgrade pip
+                pip3 install -r requirements.txt
+                pip3 install pytest pytest-cov
+                '''
             }
         }
 
         stage('Unit Tests') {
             steps {
-                sh 'python3 -m pytest --junitxml=test-results.xml --cov=. --cov-report=xml'
+                sh '''
+                python3 -m pytest --junitxml=test-results.xml --cov=. --cov-report=xml
+                '''
             }
             post {
                 always {
@@ -57,25 +70,18 @@ pipeline {
 
         stage('Docker Build & Push') {
             steps {
-                sh "docker build -t $DOCKER_IMAGE:$BUILD_NUMBER ."
-                sh "docker tag $DOCKER_IMAGE:$BUILD_NUMBER $DOCKER_IMAGE:latest"
-
                 sh """
-                    echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
-                """
+                docker build -t $DOCKER_IMAGE:$BUILD_NUMBER .
+                docker tag $DOCKER_IMAGE:$BUILD_NUMBER $DOCKER_IMAGE:latest
 
-                sh "docker push $DOCKER_IMAGE:$BUILD_NUMBER"
-                sh "docker push $DOCKER_IMAGE:latest"
+                echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
+
+                docker push $DOCKER_IMAGE:$BUILD_NUMBER
+                docker push $DOCKER_IMAGE:latest
+                """
             }
         }
 
-        // Optional Kubernetes Deployment (disabled)
-        // stage('Deploy to Kubernetes') {
-        //     steps {
-        //         sh "kubectl apply -f k8s/deployment.yaml"
-        //         sh "kubectl apply -f k8s/service.yaml"
-        //     }
-        // }
     }
 
     post {
